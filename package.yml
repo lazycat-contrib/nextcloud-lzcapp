@@ -1,0 +1,18 @@
+package: community.lazycat.app.nextcloud
+name: Nextcloud
+version: 0.0.0
+description: "Self-hosted file sync and share, with calendar, contacts, notes and collaborative editing."
+min_os_version: "1.5.0"
+homepage: https://github.com/nextcloud/server
+author: Nextcloud
+license: AGPL-3.0
+permissions:
+  required:
+    - net.internet
+locales:
+  zh:
+    name: Nextcloud
+    description: "自建网盘与协作套件：文件同步共享、日历、通讯录、笔记，还能在线协作编辑文档。"
+  en:
+    name: Nextcloud
+    description: "Self-hosted file sync and share, with calendar, contacts, notes and collaborative editing."

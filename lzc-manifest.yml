@@ -1,0 +1,75 @@
+application:
+  subdomain: nextcloud
+  multi_instance: false
+  upstreams:
+    - location: /package-licenses/
+      backend: file:///lzcapp/pkg/content/licenses/
+    - location: /
+      backend: http://nextcloud:80/
+
+services:
+  db:
+    image: docker.1ms.run/library/mariadb:10.11
+    environment:
+      - MARIADB_ROOT_PASSWORD={{ stable_secret "nextcloud_db_root" | replace "\r" "" | replace "\n" "" }}
+      - MARIADB_DATABASE=nextcloud
+      - MARIADB_USER=nextcloud
+      - |-
+        MARIADB_PASSWORD={{ stable_secret "nextcloud_db_password" | replace "\r" "" | replace "\n" "" }}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mariadb-admin ping -h 127.0.0.1 -u root -p"$$MARIADB_ROOT_PASSWORD"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    binds:
+      - /lzcapp/var/db:/var/lib/mysql
+
+  nextcloud:
+    # upstream: library/nextcloud:35.0.2
+    image: docker.1ms.run/library/nextcloud:35.0.2
+    depends_on:
+      - db
+    environment:
+      - MYSQL_HOST=db
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      - |-
+        MYSQL_PASSWORD={{ stable_secret "nextcloud_db_password" | replace "\r" "" | replace "\n" "" }}
+      - NEXTCLOUD_ADMIN_USER=admin
+      - |-
+        NEXTCLOUD_ADMIN_PASSWORD={{ stable_secret "nextcloud_admin_password" | replace "\r" "" | replace "\n" "" }}
+      - |-
+        NEXTCLOUD_TRUSTED_DOMAINS={{ .S.AppDomain }}
+      - |-
+        OVERWRITEPROTOCOL=https
+      - |-
+        OVERWRITECLIURL=https://{{ .S.AppDomain }}
+      - TRUSTED_PROXIES=*
+      - PHP_MEMORY_LIMIT=1G
+      - PHP_UPLOAD_LIMIT=2G
+      - TZ=Asia/Shanghai
+    binds:
+      - /lzcapp/var/html:/var/www/html
+
+usage: |
+  Nextcloud 是自建网盘与协作套件：文件同步共享、日历、通讯录、笔记。
+
+  使用方法：
+  1. 打开应用，用用户名 admin 和你安装时生成的密码登录。
+  2. 桌面和手机装 Nextcloud 客户端，填本站地址即可同步文件夹。
+  3. 左侧可以切换文件、相册、日历、通讯录等应用。
+
+  数据与安全：
+  - 数据库在 MariaDB（/lzcapp/var/db），文件与配置在 /lzcapp/var/html。卸载应用会一并删除，请定期备份。
+  - 数据库密码、管理员密码均由平台稳定密钥生成，每个部署不同，不存在内置弱口令。
+  - 管理员账号名固定为 admin；密码只在首次初始化时写入。
+  - 应用经懒猫入口鉴权访问，已配置可信域名与 https 协议，避免反向代理下报"不受信任的域"。
+
+  说明：
+  - 本应用包含两个容器（Nextcloud + MariaDB），启动顺序由依赖关系保证。
+  - PHP 上传上限设为 2G，内存上限 1G，适合传大文件。
+  - 未配置邮件服务，共享邮件通知、找回密码等依赖邮件的功能不可用。
+  - 未做真机验证：登录、上传下载、客户端同步、日历通讯录以及重启后持久化均未在设备上实测。
